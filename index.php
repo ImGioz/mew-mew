@@ -1,6 +1,6 @@
 <?php
 // CORS headers — добавляются всегда
-header('Access-Control-Allow-Origin: https://casemirror.cv', 'http://localhost:3000');
+header('Access-Control-Allow-Origin: https://casemirror-2f849.web.app');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
@@ -19,13 +19,14 @@ if ($amount <= 0) {
 }
 
 $token = '415872:AAZ88TTrizzKCbAWl31ZV1FNJGq1ZinAwPY'; // Замените на реальный токен
-$currency = 'TON';
+$currency = 'TON'; // Пользователь платит в TON
 $payload = 'user_deposit_' . uniqid();
 $expired_in = 3600;
 
 $data = [
-    'asset' => $currency,
+    'asset' => $currency,            // Пользователь платит TON
     'amount' => $amount,
+    'swap_to' => 'USDT',            // Автоматическая конвертация в USDT
     'description' => 'Deposit to WebApp',
     'hidden_message' => 'Thank you for using our app!',
     'payload' => $payload,
