@@ -9,7 +9,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
-$token = '415872:AAZ88TTrizzKCbAWl31ZV1FNJGq1ZinAwPY';
+$token = '42881:AAjtoAPYQHenA40LBBCXkPE8J0yP5JSbPP5';
 
 // Получаем курсы
 $context = stream_context_create([
@@ -19,7 +19,7 @@ $context = stream_context_create([
     ]
 ]);
 
-$response = file_get_contents('https://pay.crypt.bot/api/getExchangeRates', false, $context);
+$response = file_get_contents('https://testnet-pay.crypt.bot/api/getExchangeRates', false, $context);
 if ($response === false) {
     http_response_code(502);
     echo json_encode(['error' => 'Unable to fetch exchange rates']);
@@ -85,7 +85,7 @@ $options = [
 ];
 
 $context = stream_context_create($options);
-$result = @file_get_contents('https://pay.crypt.bot/api/createInvoice', false, $context);
+$result = @file_get_contents('https://testnet-pay.crypt.bot/api/createInvoice', false, $context);
 
 if ($result === false) {
     http_response_code(502);
