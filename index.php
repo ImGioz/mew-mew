@@ -56,7 +56,7 @@ if (!$ton_to_usd || !$usdt_to_usd) {
 // Расчёт курса TON → USDT
 $ton_to_usdt = $ton_to_usd / $usdt_to_usd;
 
-$ton_qty = floatval($_GET['ton'] ?? 1);
+$ton_qty = floatval($_GET['ammount']);
 if ($ton_qty <= 0) {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid TON quantity']);
