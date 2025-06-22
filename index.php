@@ -1,6 +1,6 @@
 <?php
 // CORS headers — добавляются всегда
-header('Access-Control-Allow-Origin: https://casemirror-2f849.web.app');
+header('Access-Control-Allow-Origin: https://casemirror.cv', 'http://localhost:3000');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
