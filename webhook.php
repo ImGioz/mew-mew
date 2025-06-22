@@ -2,12 +2,10 @@
 require __DIR__ . '/vendor/autoload.php';
 
 use Kreait\Firebase\Factory;
-use Kreait\Firebase\ServiceAccount;
 
-// Получение тела запроса
+// Получаем тело запроса
 $payload = json_decode(file_get_contents('php://input'), true);
 
-// Проверка, что это успешная оплата
 if (!isset($payload['update_type']) || $payload['update_type'] !== 'invoice_paid') {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid webhook data']);
@@ -15,8 +13,7 @@ if (!isset($payload['update_type']) || $payload['update_type'] !== 'invoice_paid
 }
 
 $invoice = $payload['invoice'];
-$ton_amount = $invoice['amount']; // USDT по факту, но мы добавим в TON
-$comment = $invoice['comment'] ?? '';
+$ton_amount = $invoice['amount'];
 $user_id = $invoice['user_id'] ?? null;
 
 if (!$user_id) {
@@ -25,25 +22,35 @@ if (!$user_id) {
     exit;
 }
 
-// Подключение к Firebase
+// Получаем переменные окружения
 $firebase_url = getenv('FIREBASE_DB_URL');
 $credentials_json = getenv('FIREBASE_CREDENTIALS');
 
-// Временный файл для сервисного ключа
-$tempFile = tempnam(sys_get_temp_dir(), 'firebase');
-file_put_contents($tempFile, $credentials_json);
+if (!$firebase_url || !$credentials_json) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Firebase credentials not set']);
+    exit;
+}
 
-$firebase = (new Factory())
-    ->withServiceAccount($tempFile)
+// Декодируем JSON из переменной окружения
+$serviceAccount = json_decode($credentials_json, true);
+
+if (!$serviceAccount || !isset($serviceAccount['client_email'])) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Invalid Firebase credentials JSON']);
+    exit;
+}
+
+// Создаем фабрику с сервисным аккаунтом и URL базы данных
+$firebase = (new Factory)
+    ->withServiceAccount($serviceAccount)
     ->withDatabaseUri($firebase_url)
     ->createDatabase();
 
-// Увеличение баланса пользователя
+// Обновляем баланс
 $ref = $firebase->getReference("profile/$user_id/balance");
 $old_balance = $ref->getValue() ?? 0;
 $new_balance = $old_balance + $ton_amount;
 $ref->set($new_balance);
-
-unlink($tempFile); // удалить временный файл
 
 echo json_encode(['status' => 'ok']);
