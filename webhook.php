@@ -6,6 +6,9 @@ use Kreait\Firebase\Factory;
 // Получаем тело запроса
 $payload = json_decode(file_get_contents('php://input'), true);
 
+// Логируем весь входящий payload
+error_log("Webhook payload: " . file_get_contents('php://input'));
+
 if (!isset($payload['update_type']) || $payload['update_type'] !== 'invoice_paid') {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid webhook data']);
@@ -13,8 +16,13 @@ if (!isset($payload['update_type']) || $payload['update_type'] !== 'invoice_paid
 }
 
 $invoice = $payload['invoice'];
-$ton_amount = $invoice['amount'];
+$ton_amount = (float) $invoice['amount'];  // Явно приводим к числу
 $user_id = $invoice['user_id'] ?? null;
+
+// Логи для проверки переменных
+error_log("Firebase URL: " . getenv('FIREBASE_DB_URL'));
+error_log("User ID: " . $user_id);
+error_log("Amount: " . $ton_amount);
 
 if (!$user_id) {
     http_response_code(400);
@@ -49,8 +57,19 @@ $firebase = (new Factory)
 
 // Обновляем баланс
 $ref = $firebase->getReference("profile/$user_id/balance");
+
+// Логируем старый баланс
 $old_balance = $ref->getValue() ?? 0;
+error_log("Old balance: " . var_export($old_balance, true));
+
 $new_balance = $old_balance + $ton_amount;
+
+// Логируем новый баланс перед записью
+error_log("New balance: " . $new_balance);
+
 $ref->set($new_balance);
+
+// Логируем успешное обновление
+error_log("Balance updated for user $user_id");
 
 echo json_encode(['status' => 'ok']);
