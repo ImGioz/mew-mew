@@ -1,5 +1,5 @@
 <?php
-header('Access-Control-Allow-Origin: https://casemirror.cv', 'http://localhost:3000');
+header('Access-Control-Allow-Origin: https://casemirror.cv, http://localhost:3000');
 header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type');
 header('Content-Type: application/json');
@@ -11,7 +11,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 $token = '415872:AAZ88TTrizzKCbAWl31ZV1FNJGq1ZinAwPY';
 
-// Получаем курс TON → USDT
+// Получаем курсы
 $context = stream_context_create([
     'http' => [
         'method' => 'GET',
@@ -20,38 +20,56 @@ $context = stream_context_create([
 ]);
 
 $response = file_get_contents('https://pay.crypt.bot/api/getExchangeRates', false, $context);
-$rates = json_decode($response, true)['result'];
-
-$ton_to_usdt = null;
-foreach ($rates as $r) {
-    if ($r['source'] === 'TON' && $r['target'] === 'USDT') {
-        $ton_to_usdt = $r['rate'];
-        break;
-    }
-}
-
-if (!$ton_to_usdt) {
-    http_response_code(500);
-    echo json_encode(['error' => 'Exchange rate not found']);
+if ($response === false) {
+    http_response_code(502);
+    echo json_encode(['error' => 'Unable to fetch exchange rates']);
     exit;
 }
 
-// Сколько TON хочет "купить" пользователь (в долларах по курсу TON)
-$ton_qty = floatval($_GET['ton'] ?? 1); // Пример: ?ton=2
+$data = json_decode($response, true);
+if (!isset($data['result'])) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Invalid response from exchange rates API']);
+    exit;
+}
+
+$rates = $data['result'];
+
+$ton_to_usd = null;
+$usdt_to_usd = null;
+
+foreach ($rates as $r) {
+    if ($r['source'] === 'TON' && $r['target'] === 'USD') {
+        $ton_to_usd = $r['rate'];
+    }
+    if ($r['source'] === 'USDT' && $r['target'] === 'USD') {
+        $usdt_to_usd = $r['rate'];
+    }
+}
+
+if (!$ton_to_usd || !$usdt_to_usd) {
+    http_response_code(500);
+    echo json_encode(['error' => 'Required exchange rates not found']);
+    exit;
+}
+
+// Расчёт курса TON → USDT
+$ton_to_usdt = $ton_to_usd / $usdt_to_usd;
+
+$ton_qty = floatval($_GET['ton'] ?? 1);
 if ($ton_qty <= 0) {
     http_response_code(400);
     echo json_encode(['error' => 'Invalid TON quantity']);
     exit;
 }
 
-// Считаем сколько USDT это стоит
-$usdt_amount = round($ton_qty * $ton_to_usdt, 2); // например: 2 * 6.5 = $13.00
+$usdt_amount = round($ton_qty * $ton_to_usdt, 2);
 
 $payload = 'ton_price_usdt_' . uniqid();
 $data = [
-    'asset' => 'USDT',                   // Инвойс в долларах
-    'amount' => $usdt_amount,            // Сумма в USDT
-    'swap_to' => 'USDT',                 // Всегда получаем USDT
+    'asset' => 'USDT',
+    'amount' => $usdt_amount,
+    'swap_to' => 'USDT',
     'description' => 'Refill balance @casemirror',
     'hidden_message' => 'Thank you for using our app!',
     'payload' => $payload,
