@@ -7,6 +7,7 @@ header('Content-Type: application/json');
 
 // Получаем тело запроса (json)
 $input = file_get_contents('php://input');
+error_log("Webhook received: " . $input);
 $data = json_decode($input, true);
 
 if (!$data) {
@@ -16,8 +17,8 @@ if (!$data) {
 }
 
 // Проверяем наличие payload и нового статуса
-$payload = $data['payload'] ?? null;
-$new_status = $data['status'] ?? null;
+$payload = $data['invoice']['payload'] ?? null;
+$new_status = $data['invoice']['status'] ?? null;
 
 if (!$payload || !$new_status) {
     http_response_code(400);
