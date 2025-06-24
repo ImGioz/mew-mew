@@ -17,8 +17,8 @@ if (!$data) {
 }
 
 // Проверяем наличие payload и нового статуса
-$payload = $data['invoice']['payload'] ?? null;
-$new_status = $data['invoice']['status'] ?? null;
+$payload = $data['payload']['payload'] ?? null;
+$new_status = $data['payload']['status'] ?? null;
 
 if (!$payload || !$new_status) {
     http_response_code(400);
