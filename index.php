@@ -145,6 +145,7 @@ try {
     $payment_record = [
         'userId' => $userId,
         'amount' => $usdt_amount,
+        'amount_ton' => $ton_qty,    // сумма в TON из запроса
         'status' => 'pending',
         'createdAt' => time()
     ];
