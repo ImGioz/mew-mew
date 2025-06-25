@@ -5,28 +5,30 @@ use Kreait\Firebase\Factory;
 
 header('Content-Type: application/json');
 
+// Для логов Render
+error_log('Webhook received: ' . file_get_contents('php://input'));
+
 // Получаем тело запроса (json)
 $input = file_get_contents('php://input');
-error_log("Webhook received: " . $input);
 $data = json_decode($input, true);
 
-if (!$data) {
-    http_response_code(400);
-    echo json_encode(['error' => 'Invalid JSON']);
-    exit;
-}
-
-// Проверяем наличие payload и нового статуса
-$payload = $data['payload']['payload'] ?? null;
-$new_status = $data['payload']['status'] ?? null;
-
-if (!$payload || !$new_status) {
+if (!$data || !isset($data['payload']) || !isset($data['payload']['payload']) || !isset($data['payload']['status'])) {
     http_response_code(400);
     echo json_encode(['error' => 'Missing payload or status']);
     exit;
 }
 
-// Загрузка настроек Firebase из env
+$paymentData = $data['payload'];
+$payload = $paymentData['payload'];
+$status = $paymentData['status'];
+
+if ($status !== 'paid') {
+    http_response_code(200);
+    echo json_encode(['message' => 'Not a paid status, ignoring']);
+    exit;
+}
+
+// Firebase config
 $firebase_url = getenv('FIREBASE_DB_URL');
 $credentials_json = getenv('FIREBASE_CREDENTIALS');
 
@@ -49,23 +51,36 @@ try {
         ->withDatabaseUri($firebase_url);
     $database = $factory->createDatabase();
 
-    // Обновляем поле status у платежа по ключу payload
-    $ref = $database->getReference('payments/' . $payload);
+    // Получаем платеж
+    $paymentRef = $database->getReference('payments/' . $payload);
+    $payment = $paymentRef->getValue();
 
-    // Проверяем, что запись существует
-    $payment = $ref->getValue();
-    if (!$payment) {
+    if (!$payment || !isset($payment['userId']) || !isset($payment['amount_ton'])) {
         http_response_code(404);
-        echo json_encode(['error' => 'Payment record not found']);
+        echo json_encode(['error' => 'Payment record incomplete or not found']);
         exit;
     }
 
-    $ref->update([
-        'status' => $new_status,
+    $userId = $payment['userId'];
+    $amountTon = floatval($payment['amount_ton']);
+
+    // Обновляем статус платежа
+    $paymentRef->update([
+        'status' => 'paid',
         'updatedAt' => time()
     ]);
 
-    echo json_encode(['success' => true]);
+    // Получаем текущий баланс пользователя
+    $userRef = $database->getReference('profile/' . $userId);
+    $user = $userRef->getValue();
+
+    $currentBalance = isset($user['balance']) ? floatval($user['balance']) : 0;
+
+    // Обновляем баланс
+    $newBalance = $currentBalance + $amountTon;
+    $userRef->update(['balance' => $newBalance]);
+
+    echo json_encode(['success' => true, 'newBalance' => $newBalance]);
 } catch (Exception $e) {
     http_response_code(500);
     echo json_encode(['error' => 'Firebase error', 'message' => $e->getMessage()]);
