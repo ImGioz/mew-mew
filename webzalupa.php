@@ -4,11 +4,8 @@ require 'vendor/autoload.php';
 use Kreait\Firebase\Factory;
 
 header('Content-Type: application/json');
-
-// Для логов Render
 error_log('Webhook received: ' . file_get_contents('php://input'));
 
-// Получаем тело запроса (json)
 $input = file_get_contents('php://input');
 $data = json_decode($input, true);
 
@@ -28,7 +25,6 @@ if ($status !== 'paid') {
     exit;
 }
 
-// Firebase config
 $firebase_url = getenv('FIREBASE_DB_URL');
 $credentials_json = getenv('FIREBASE_CREDENTIALS');
 
@@ -70,7 +66,7 @@ try {
         'updatedAt' => time()
     ]);
 
-    // Получаем текущий баланс пользователя
+    // Получаем пользователя
     $userRef = $database->getReference('profile/' . $userId);
     $user = $userRef->getValue();
 
@@ -79,6 +75,42 @@ try {
     // Обновляем баланс
     $newBalance = $currentBalance + $amountTon;
     $userRef->update(['balance' => $newBalance]);
+
+    // === НАЧИСЛЕНИЕ БОНУСА ПРИГЛАСИВШЕМУ ===
+    if (isset($user['referred_by']) && !empty($user['referred_by'])) {
+        $refCode = $user['referred_by'];
+
+        // Ищем пригласившего по его ref_code
+        $profilesRef = $database->getReference('profile');
+        $allProfiles = $profilesRef->getValue();
+
+        $referrerId = null;
+        foreach ($allProfiles as $profileId => $profileData) {
+            if (isset($profileData['ref_code']) && $profileData['ref_code'] === $refCode) {
+                $referrerId = $profileId;
+                break;
+            }
+        }
+
+        if ($referrerId) {
+            $referrerRef = $database->getReference('profile/' . $referrerId);
+            $referrer = $referrerRef->getValue();
+
+            $currentBonus = isset($referrer['bonus_balance']) ? floatval($referrer['bonus_balance']) : 0;
+            $bonusToAdd = $amountTon * 0.10;
+
+            $referrerRef->update([
+                'bonus_balance' => $currentBonus + $bonusToAdd
+            ]);
+
+            error_log("✅ Bonus of {$bonusToAdd} TON added to referrer $referrerId");
+        } else {
+            error_log("⚠️ Referrer not found by ref_code: $refCode");
+        }
+    } else {
+        error_log("ℹ️ No referred_by field found for user: $userId");
+    }
+    // ==========================
 
     echo json_encode(['success' => true, 'newBalance' => $newBalance]);
 } catch (Exception $e) {
