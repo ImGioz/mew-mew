@@ -14,7 +14,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 // Токен для CryptoBot API
-$token = '42881:AAjtoAPYQHenA40LBBCXkPE8J0yP5JSbPP5';
+$token = getenv('CRYPTOPAY_API_TOKEN');
 
 // Получаем userId из GET (например, ?userId=abc123)
 $userId = $_GET['userId'] ?? null;
