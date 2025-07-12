@@ -40,7 +40,7 @@ $context = stream_context_create([
     ]
 ]);
 
-$response = file_get_contents('https://testnet-pay.crypt.bot/api/getExchangeRates', false, $context);
+$response = file_get_contents('https://pay.crypt.bot/api/getExchangeRates', false, $context);
 if ($response === false) {
     http_response_code(502);
     echo json_encode(['error' => 'Unable to fetch exchange rates']);
@@ -87,7 +87,6 @@ $invoice_data = [
     'amount' => $usdt_amount,
     'swap_to' => 'USDT',
     'description' => 'Refill balance @casemirror',
-    'hidden_message' => 'Thank you for using our app!',
     'payload' => $payload,
     'expires_in' => 3600
 ];
@@ -101,7 +100,7 @@ $options = [
 ];
 
 $context = stream_context_create($options);
-$result = @file_get_contents('https://testnet-pay.crypt.bot/api/createInvoice', false, $context);
+$result = @file_get_contents('https://pay.crypt.bot/api/createInvoice', false, $context);
 
 if ($result === false) {
     http_response_code(502);
