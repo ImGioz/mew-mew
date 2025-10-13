@@ -99,11 +99,22 @@ try {
             $currentBonus = isset($referrer['bonus_balance']) ? floatval($referrer['bonus_balance']) : 0;
             $bonusToAdd = $amountTon * 0.10;
 
+            // Обновляем бонусный баланс
             $referrerRef->update([
                 'bonus_balance' => $currentBonus + $bonusToAdd
             ]);
 
+            // === НАКОПЛЕНИЕ В REF_DEP_SUM ===
+            $referralDepRef = $database->getReference("profile/{$referrerId}/referrals/{$userId}");
+            $existingDep = $referralDepRef->getValue();
+            $currentDepSum = isset($existingDep['ref_dep_sum']) ? floatval($existingDep['ref_dep_sum']) : 0;
+
+            $referralDepRef->update([
+                'ref_dep_sum' => $currentDepSum + $bonusToAdd
+            ]);
+
             error_log("✅ Bonus of {$bonusToAdd} TON added to referrer $referrerId");
+            error_log("✅ Referral deposit sum updated: +{$bonusToAdd} TON from $userId under referrer $referrerId");
         } else {
             error_log("⚠️ Referrer not found by ref_code: $refCode");
         }
