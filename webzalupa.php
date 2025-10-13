@@ -76,6 +76,14 @@ try {
     $newBalance = $currentBalance + $amountTon;
     $userRef->update(['balance' => $newBalance]);
 
+    // === НАКОПЛЕНИЕ ДЕПОЗИТА ЗА 24 ЧАСА ===
+    $dailyDepositRef = $database->getReference("profile/{$userId}/daily_deposit");
+    $existingDailyDeposit = $dailyDepositRef->getValue();
+    $currentDaily = isset($existingDailyDeposit) ? floatval($existingDailyDeposit) : 0;
+
+    $dailyDepositRef->set($currentDaily + $amountTon);
+    error_log("📥 Daily deposit for user $userId updated: +" . $amountTon . " TON (total: " . ($currentDaily + $amountTon) . ")");
+
     // === НАЧИСЛЕНИЕ БОНУСА ПРИГЛАСИВШЕМУ ===
     if (isset($user['referred_by']) && !empty($user['referred_by'])) {
         $refCode = $user['referred_by'];
